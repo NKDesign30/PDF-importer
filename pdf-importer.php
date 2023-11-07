@@ -68,9 +68,23 @@ function pdf_importer_handle_upload($file)
 function pdf_importer_parse_pdf($file_path)
 {
   try {
-    $parser = new \Smalot\PdfParser\Parser();
-    $pdf    = $parser->parseFile($file_path);
-    $text   = $pdf->getText();
+    // Initialisieren von FPDI
+    $pdf = new \setasign\Fpdi\Fpdi();
+
+    // Seitenanzahl bekommen
+    $pageCount = $pdf->setSourceFile($file_path);
+    $text = '';
+
+    // Durch jede Seite gehen und den Text extrahieren
+    for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+      $templateId = $pdf->importPage($pageNo);
+      $size = $pdf->getTemplateSize($templateId);
+
+      $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+      $pdf->useTemplate($templateId);
+
+      $text .= $pdf->Text(); // Diese Methode hängt von der Bibliothek ab und muss entsprechend angepasst werden
+    }
 
     // Erstellen eines neuen WordPress-Posts
     $post_id = wp_insert_post(array(
@@ -95,6 +109,7 @@ function pdf_importer_parse_pdf($file_path)
     unlink($file_path);
   }
 }
+
 
 // Aktivierungshook
 function pdf_importer_activate()
